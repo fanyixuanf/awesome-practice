@@ -1,1 +1,1 @@
-# Awesome VIEW project
+# Awesome Practice
