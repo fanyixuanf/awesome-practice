@@ -1,1 +1,1 @@
-# Awesome VIEW - frontend
+# Awesome Practice - frontend
