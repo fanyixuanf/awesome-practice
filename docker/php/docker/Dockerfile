@@ -1,4 +1,5 @@
-FROM php:fpm-alpine3.9
+#FROM php:fpm-alpine3.9
+FROM php:7.4-fpm-alpine
 
 MAINTAINER yixuan<fanyixuanf@gmail.com>
 LABEL Description="This image is used to start php server for Laravel." Vendor="yixuan" Version="1.0"
@@ -12,52 +13,75 @@ COPY ./composer.json ./composer.lock ./
 
 RUN set -xe \
     # add mirrors in China and make them head of others
-    && echo http://mirrors.ustc.edu.cn/alpine/v$(head -1 /etc/apk/repositories | cut -dv -f2) > /tmp/repos \
-    && cat /etc/apk/repositories >> /tmp/repos \
-    && mv /tmp/repos /etc/apk/repositories \
+    # && echo http://mirrors.ustc.edu.cn/alpine/v$(head -1 /etc/apk/repositories | cut -dv -f2) >> /tmp/repos \
+    # && cat /etc/apk/repositories >> /tmp/repos \
+    # && mv /tmp/repos /etc/apk/repositories \
+    && sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories \
+    && cat /etc/apk/repositories \
     # install dependences
     && apk add --no-cache --virtual .build-deps \
+        vim \
         libjpeg-turbo-dev \
         zlib-dev \
         libpng-dev \
         freetype-dev \
+        libzip \
         libzip-dev \
         git \
         autoconf \
         make \
         gcc \
         g++ \
-    && apk add --no-cache --virtual .persistent-deps \
+        libstdc++ \
+        imagemagick \
+        libjpeg \
+        libwebp \
+        libtirpc \
+        libtirpc-dev \
+        libwebp-dev \
+        imagemagick-dev \
+        libmemcached \
+        libmemcached-dev \
+        && apk add --no-cache --virtual  .persistent-deps \
         libjpeg-turbo \
         zlib \
         libpng \
         freetype \
         supervisor\
+        imagemagick \
+        libtirpc \
+        libwebp \
+        libmemcached \
+        openssl-dev pcre-dev pcre2-dev zlib-dev libmcrypt-dev \
     && mkdir /etc/supervisor.d \
-    # install php extensions
-    && docker-php-ext-configure gd \
-        --with-freetype-dir=/usr/include/ \
-        --with-jpeg-dir=/usr/include/ \
-    && docker-php-ext-configure zip \
-        --without-libzip \
-    && docker-php-ext-configure bcmath --enable-bcmath \
-    && docker-php-ext-install mysqli pdo_mysql zip gd bcmath \
+    # install php extensions 7.3
+    # && docker-php-ext-configure gd \
+    #     --with-freetype-dir=/usr/include/ \
+    #     --with-jpeg-dir=/usr/include/ \
+    # 7.4
+    && docker-php-ext-configure gd --with-webp=/usr/include/webp --with-jpeg=/usr/include --with-freetype=/usr/include/freetype2/ \
+    && docker-php-ext-install mysqli pdo_mysql gd bcmath sockets \
+    && pecl install mcrypt-1.0.3  \
     && pecl install -o -f redis \
-    && docker-php-ext-enable redis \
+    && pecl install swoole \
+    && pecl install imagick \
+    && pecl install memcached-3.1.3 \
+    && pecl install mongodb \
+    && docker-php-ext-enable redis swoole mcrypt imagick memcached mongodb \
     # install composer and php packages
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
     && php composer-setup.php \
     && php -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
     && composer config repositories.packagist composer ${COMPOSER_REPOSITORY} \
-    && composer install --no-scripts \
-    && rm /usr/local/bin/composer \
-    && rm -rf ~/.composer \
+    # && composer install --no-scripts \
+    # && rm /usr/local/bin/composer \
+    # && rm -rf ~/.composer \
     # clean up
     && apk del .build-deps \
     && rm -rf /var/cache/apt/* \
     && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+    && rm -rf /var/tmp/* 
 
 # laravel source code
 COPY ./ ./
@@ -71,11 +95,12 @@ COPY ./docker/php-fpm/ /usr/local/etc/php-fpm.d/
 COPY ./docker/docker-entrypoint.sh /usr/local/bin/
 
 RUN sed -i 's/\r//g' /usr/local/bin/docker-entrypoint.sh \
-    && chmod +x /usr/local/bin/docker-entrypoint.sh
+    && chmod +x /usr/local/bin/docker-entrypoint.sh 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # give write permission
 RUN sed -i 's/\r//g' ./crontab/laravel.crontab \
     && crontab -u www-data ./crontab/laravel.crontab
+RUN set -xe ldconfig 
 
 CMD ["php-fpm"]
