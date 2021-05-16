@@ -32,7 +32,7 @@ if [[ "$1" = 'php-fpm' && -z "$wantHelp" ]]; then
     echo 'Start supervisord service.'
     echo
 
-    chown -R www-data:www-data /var/www/html/public /var/www/html/storage /var/www/html/bootstrap/cache
+   # chown -R www-data:www-data /var/www/html/public /var/www/html/storage /var/www/html/bootstrap/cache
     echo
     echo 'chown for resources and storage and cache.'
     echo

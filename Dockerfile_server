@@ -12,7 +12,7 @@ WORKDIR /var/www/html
 COPY ./backend/* ./
 
 # With leverage of caching mechanism, installing dependencies, which rarely change, before copying in the scource files.
-COPY ./composer.json ./composer.lock ./
+COPY ./backend/composer.json ./backend/composer.lock ./
 
 RUN set -xe \
     # add mirrors in China and make them head of others
@@ -100,8 +100,8 @@ RUN sed -i 's/\r//g' /usr/local/bin/docker-entrypoint.sh \
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # give write permission
-RUN sed -i 's/\r//g' ./crontab/laravel.crontab \
-    && crontab -u www-data ./crontab/laravel.crontab
+# RUN sed -i 's/\r//g' ./crontab/laravel.crontab \
+#     && crontab -u www-data ./crontab/laravel.crontab
 RUN set -xe ldconfig 
 
 EXPOSE 9000 

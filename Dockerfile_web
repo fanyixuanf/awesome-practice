@@ -1,41 +1,54 @@
-FROM nginx:stable-alpine
+FROM node:latest
+
+WORKDIR /usr/share/nginx/html
 
 MAINTAINER yixuan<fanyixuanf@gmail.com>
 LABEL Description="This image is used to start nginx server for Practice." Vendor="yixuan" Version="1.0"
 
 ARG NPM_REGISTRY="https://registry.npmjs.org/"
 
-RUN set -xe \
-    # add mirrors in China
-    && echo http://mirrors.ustc.edu.cn/alpine/v$(head -1 /etc/apk/repositories | cut -dv -f2) > /tmp/repos \
-    && cat /etc/apk/repositories >> /tmp/repos \
-    && mv /tmp/repos /etc/apk/repositories \
-    # install dependences
-    && apk add --no-cache --virtual .build-deps \
-        nodejs \
-        npm \
-    && npm config set registry ${NPM_REGISTRY} \
-    # install gulp for building the old front-end framework
-    && npm install -g gulp-cli
+# RUN set -xe \
+#     # add mirrors in China
+#     && echo http://mirrors.ustc.edu.cn/alpine/v$(head -1 /etc/apk/repositories | cut -dv -f2) > /tmp/repos \
+#     && cat /etc/apk/repositories >> /tmp/repos \
+#     && mv /tmp/repos /etc/apk/repositories \
+#     # install dependences
+#     && apk add --no-cache --virtual .build-deps \
+#         nodejs \
+#         npm \
+#     && npm config set registry ${NPM_REGISTRY} \
+#     # install gulp for building the old front-end framework
+#     && npm install -g gulp-cli
 
-WORKDIR /practice_web/
+# WORKDIR /practice_web/
 
-# nginx custom configuration
-COPY ./docker/nginx/docker/config/* /etc/nginx/conf.d/
+COPY ./frontend/package*.json ./
 
 # front-end source code
 COPY ./frontend/* ./
 
-RUN apk add --no-cache bash
-
+RUN npm install -g cnpm --registry=https://registry.npm.taobao.org
+RUN cnpm install || npm install
 RUN npm run build
-COPY --from=0 /practice_web/dist /usr/share/nginx/html
 
-COPY ./docker/nginx/docker/entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh \
-    && ln -s /usr/local/bin/entrypoint.sh / # backwards compat
-ENTRYPOINT ["entrypoint.sh"]
+EXPOSE 8080
+CMD ["npm", 'start']
 
+FROM nginx:stable-alpine
+
+COPY ./frontend/dist/ /usr/share/nginx/html/
+# nginx custom configuration
+COPY ./nginx/conf.d/my.conf /etc/nginx/conf.d/
+
+#COPY --from=0 /practice_web/dist /usr/share/nginx/html
+
+# COPY ./docker/nginx/docker/entrypoint.sh /usr/local/bin/
+# RUN chmod +x /usr/local/bin/entrypoint.sh \
+#     && ln -s /usr/local/bin/entrypoint.sh / # backwards compat
+#ENTRYPOINT ["entrypoint.sh"]
+
+RUN ls -al /usr/share/nginx/html
+CMD ls -al /usr/share/nginx/html
 
 # It seems that a duplicate of CMD within nginx:stable-alpine is mandatary,
 # since the ENTRYPOINT above will override the CMD within the base image.
